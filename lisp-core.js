@@ -171,7 +171,7 @@
     return evls($.get(a));
   }
   
-  evlf("/codes/libjs/lisp-core/devel/lisp-core.lisp");
+  evlf("lib/lisp-core.lisp");
   
   ////// Object exposure //////
   
