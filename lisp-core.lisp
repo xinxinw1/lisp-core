@@ -436,3 +436,46 @@
       `(let #r ,(car a)
          ,@(cdr a)
          #r)))
+
+#|
+(smlet a '(lis 1 2 3)
+  a)
+|#
+(mac smlet (a x . bd)
+  `(let ,a (smc ,x) ,@bd))
+
+(mac smwith (vs . bd)
+  `(with ,(mapapp [lis (car _) `(smc ,(cadr _))] (grp vs 2))
+     ,@bd))
+
+(mac mover (nm ag . bd)
+  `(let sup ,nm
+     (= ,nm (mc ,ag ,@bd))))
+
+(mac retfr (s r)
+  `(err nil "Unknown block $1" ',s))
+
+#|
+(block a
+  (prn " Entering BLOCK")
+  (bar [retfr a])
+  (prn " Leaving BLOCK"))
+
+->
+
+(with (gs1 (lis nil) gs2 retfr)
+  (let retfr (mc (s r)
+               (if (is s 'a) `(thr gs1 ,r)
+                   `(gs2 ,s ,r)))
+    (cat gs1
+      (prn " Entering BLOCK")
+      (bar [retfr a])
+      (prn " Leaving BLOCK"))
+|#
+
+(mac blk (v . bd)
+  `(with (#g (lis nil) #retfr retfr)
+     (let retfr (mc (s r)
+                  (if (is s ',v) `(thr #g ,r)
+                      `(#retfr ,s ,r)))
+       (cat #g ,@bd))))
