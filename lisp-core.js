@@ -140,7 +140,7 @@
     orem: L.orem,
     oref: L.oref,
     oset: L.oset,
-    osetp: chrb(L.osetp),
+    "oset?": chrb(L.osetp),
     odel: L.odel,
     oren: L.oren,
     owith: L.owith,

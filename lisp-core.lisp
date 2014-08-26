@@ -33,7 +33,8 @@
 
 (mac nfn (a) `(fn (_) ,a))
 
-(mac blk a
+; simple block
+(mac sblk a
   `((fn () ,@a)))
 
 (mac let (a x . bd)
@@ -97,6 +98,9 @@
 
 (mac mlet (a . bd)
   `(let ,(car a) (mc ,@(cdr a)) ,@bd))
+
+(mac mwith (as . bd)
+  `(with ,(mapapp [lis (car _) `(mc ,@(cdr _))] as) ,@bd))
 
 (mac rwith (nm vs . bd)
   (let g (grp vs 2)
@@ -207,7 +211,7 @@
       (app (lis (car gens) (car vs)) (gslis (cdr gens) (cdr vs)))))
 
 (mac loop (st p up . bd)
-  `(blk ,st (while ,p ,@bd ,up)))
+  `(sblk ,st (while ,p ,@bd ,up)))
 
 (mac for (i n m . bd)
   (once (n m)
@@ -343,10 +347,10 @@
 (mac tags a
   (let (beftag . s) (splbef a sym?)
     `(mlet (go (a) `(ret (,a)))
-        (blk ,@beftag
-             ,@(let g (maplis [lisd (caar _) (caadr _) (cdar _)] s)
-                 (map mktag1 g))
-             (,(caar s))))))
+        (sblk ,@beftag
+              ,@(let g (maplis [lisd (caar _) (caadr _) (cdar _)] s)
+                  (map mktag1 g))
+              (,(caar s))))))
 
 (def maplis (f a)
   (if (no a) nil
@@ -475,7 +479,24 @@
 
 (mac blk (v . bd)
   `(with (#g (lis nil) #retfr retfr)
-     (let retfr (mc (s r)
-                  (if (is s ',v) `(thr #g ,r)
-                      `(#retfr ,s ,r)))
+     (mlet (retfr (s r)
+             (if (is s ',v) `(thr #g ,r)
+                 `(#retfr ,s ,r)))
        (cat #g ,@bd))))
+
+(mac olay (a)
+  `(= ,a {0 ,a}))
+
+(mac oulay (a)
+  `(= ,a (,a 0)))
+
+(mac mkoacc (nm pre)
+  `(do (var ,nm {})
+       (def ,(app pre 'ref) (a) (oref ,nm a))
+       (def ,(app pre 'put) (a x) (oput ,nm a x))
+       (def ,(app pre 'set) (a x) (oset ,nm a x))
+       (def ,(app pre 'set?) (a) (oset? ,nm a))
+       (def ,(app pre 'del) (a) (odel ,nm a))
+       (def ,(app pre 'ren) (a b) (oren ,nm a b))
+       (def ,(app pre 'lay) () (olay ,nm))
+       (def ,(app pre 'ulay) () (oulay ,nm))))
