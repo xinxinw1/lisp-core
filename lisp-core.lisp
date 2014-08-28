@@ -96,11 +96,19 @@
 (mac afn (ag . bd)
   `(rfn self ,ag ,@bd))
 
-(mac mlet (a . bd)
-  `(let ,(car a) (mc ,@(cdr a)) ,@bd))
+(mac mlet ((nm . mbd) . bd)
+  `(let ,nm (mc ,@mbd) ,@bd))
 
 (mac mwith (as . bd)
   `(with ,(mapapp [lis (car _) `(mc ,@(cdr _))] as) ,@bd))
+
+(mac mover (nm ag . bd)
+  `(let sup ,nm
+     (= ,nm (mc ,ag ,@bd))))
+
+(mac moverlet ((nm . mbd) . bd)
+  `(let ,nm (let sup ,nm (mc ,@mbd))
+     ,@bd))
 
 (mac rwith (nm vs . bd)
   (let g (grp vs 2)
@@ -210,8 +218,62 @@
       (sym? (car vs)) (gslis (cdr gens) (cdr vs))
       (app (lis (car gens) (car vs)) (gslis (cdr gens) (cdr vs)))))
 
+(mac retfr (s r)
+  `(err nil "Unknown block $1" ',s))
+
+#|
+(block a
+  (prn " Entering BLOCK")
+  (bar [retfr a])
+  (prn " Leaving BLOCK"))
+
+->
+
+(with (gs1 (lis nil) gs2 retfr)
+  (let retfr (mc (s r)
+               (if (is s 'a) `(thr gs1 ,r)
+                   `(gs2 ,s ,r)))
+    (cat gs1
+      (prn " Entering BLOCK")
+      (bar [retfr a])
+      (prn " Leaving BLOCK"))
+|#
+
+(mac blk (v . bd)
+  `(with (#g (lis nil) #retfr retfr)
+     (mlet (retfr (s r)
+             (if (is s ',v) `(thr #g ,r)
+                 `(#retfr ,s ,r)))
+       (cat #g ,@bd))))
+
+(mac bdef (nm ag . bd)
+  `(def ,nm ,ag (blk ,nm ,@bd)))
+
+(mac brfn (nm ag . bd)
+  `(rfn ,nm ,ag (blk ,nm ,@bd)))
+
+#|
+(loop (var i 0) (< i 10) (++ i)
+  (if (is i 3) (cont))
+  (prn i))
+->
+(sblk
+  (mlet (cont () `(retfr #g))
+    (var i 0)
+    (while (< i 10)
+      (blk #g
+        (if (is i 3) (cont))
+        (prn i))
+      (++ i))))
+|#
+
 (mac loop (st p up . bd)
-  `(sblk ,st (while ,p ,@bd ,up)))
+  `(sblk
+     (mlet (cont () `(retfr #g))
+       ,st
+       (while ,p
+         (blk #g ,@bd)
+         ,up))))
 
 (mac for (i n m . bd)
   (once (n m)
@@ -238,10 +300,14 @@
   `(down #i ,n 1 ,@bd))
 
 (mac each (x a . bd)
-  `(eachfn ,a (fn (,x) ,@bd)))
+  `(mlet (cont () `(retfr #g))
+     (eachfn ,a
+       (brfn #g (,x) ,@bd))))
 
 (mac oeach (i x a . bd)
-  `(oeachfn ,a (fn (,i ,x) ,@bd)))
+  `(mlet (cont () `(retfr #g))
+     (oeachfn ,a
+       (brfn #g (,i ,x) ,@bd))))
 
 (mac nofcol (n a)
   `(let #g nil
@@ -452,38 +518,6 @@
   `(with ,(mapapp [lis (car _) `(smc ,(cadr _))] (grp vs 2))
      ,@bd))
 
-(mac mover (nm ag . bd)
-  `(let sup ,nm
-     (= ,nm (mc ,ag ,@bd))))
-
-(mac retfr (s r)
-  `(err nil "Unknown block $1" ',s))
-
-#|
-(block a
-  (prn " Entering BLOCK")
-  (bar [retfr a])
-  (prn " Leaving BLOCK"))
-
-->
-
-(with (gs1 (lis nil) gs2 retfr)
-  (let retfr (mc (s r)
-               (if (is s 'a) `(thr gs1 ,r)
-                   `(gs2 ,s ,r)))
-    (cat gs1
-      (prn " Entering BLOCK")
-      (bar [retfr a])
-      (prn " Leaving BLOCK"))
-|#
-
-(mac blk (v . bd)
-  `(with (#g (lis nil) #retfr retfr)
-     (mlet (retfr (s r)
-             (if (is s ',v) `(thr #g ,r)
-                 `(#retfr ,s ,r)))
-       (cat #g ,@bd))))
-
 (mac olay (a)
   `(= ,a {0 ,a}))
 
@@ -500,3 +534,8 @@
        (def ,(app pre 'ren) (a b) (oren ,nm a b))
        (def ,(app pre 'lay) () (olay ,nm))
        (def ,(app pre 'ulay) () (oulay ,nm))))
+
+(mac bug (a)
+  `(let #g ,a
+     (al ,(str a " = $1") #g)
+     #g))
