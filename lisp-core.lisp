@@ -448,9 +448,8 @@
 (mac dyn (a x . bd)
   `(let #ori ,a
      (= ,a ,x)
-     (let #ret (do ,@bd)
-       (= ,a #ori)
-       #ret)))
+     (prot (do ,@bd)
+       (= ,a #ori))))
 
 (mac sta (a x . bd)
   `(do (psh ,x ,a)
@@ -535,7 +534,33 @@
        (def ,(app pre 'lay) () (olay ,nm))
        (def ,(app pre 'ulay) () (oulay ,nm))))
 
-(mac bug (a)
-  `(let #g ,a
-     (al ,(str a " = $1") #g)
-     #g))
+(def las (a)
+  (if (no a) nil
+      (no (cdr a)) (car a)
+      (las (cdr a))))
+
+(def but (a)
+  (if (no a) nil
+      (no (cdr a)) nil
+      (cons (car a) (but (cdr a)))))
+
+(mac bug a
+  `(let #g (lis ,@a)
+     (al ,(joi (mapi (fn (_ i) (str _ " = $" i)) a 1) " | ") @#g)
+     (las #g)))
+
+(mac bugn (nm . a)
+  `(let #g (lis ,@a)
+     (al (str ,nm " | "
+              ,(joi (mapi (fn (_ i) (str _ " = $" i))
+                          a 1)
+                    " | "))
+         @#g)
+     (las #g)))
+
+(mac bugm (nm . a)
+  `(do ,@(map [qq (bugn ,nm ,_)] a)))
+
+(def mapi (f a (o i 0))
+  (if (no a) nil
+      (cons (f (car a) i) (mapi f (cdr a) (+ i 1)))))

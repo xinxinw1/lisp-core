@@ -59,6 +59,8 @@
     tlis: L.tlis,
     tobj: L.tobj,
     
+    iso: chrb(L.iso),
+    
     map: L.map,
     dmap: L.dmap,
     pos: L.pos,
