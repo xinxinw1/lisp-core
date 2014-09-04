@@ -244,6 +244,7 @@
     prs: function lprs(a){
            return L.prs(L.jstr(a));
          },
+    "=nm": L.setnm,
     "*out*": function (a){return L.nil();}
   });
   
