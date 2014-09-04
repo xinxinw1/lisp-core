@@ -4,16 +4,14 @@
 (mac def (nm ag . bd)
   `(var ,nm (fn ,ag ,@bd)))
 
-(mac dot () `|.|)
-
 (def aqt (a) (lis 'qt a))
 (def auq (a) (lis 'uq a))
 
-(mac |.| (x . a)
+(mac . (x . a)
   (if (no a) x
-      `(|.| ,(let y (car a)
+      `(. ,(let y (car a)
                (if (atm? y) `(,x ',y)
-                   `((|.| ,x ,(car y)) ,@(cdr y))))
+                   `((. ,x ,(car y)) ,@(cdr y))))
           ,@(cdr a))))
 
 (mac byn (n nm op)

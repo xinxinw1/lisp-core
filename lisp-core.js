@@ -149,20 +149,20 @@
     //mats: L.mats,
     
     len: L.len,
-    //emp: chrb(L.emp),
+    emp: chrb(L.emp),
     cpy: L.cpy,
     //cln: L.cln,
     rev: L.rev,
     nrev: L.nrev,
     
-    //sli: L.sli,
-    //fstn: L.fstn,
-    //rstn: L.rstn,
-    //rst: L.rst,
-    //mid: L.mid,
+    sli: L.sli,
+    fstn: L.fstn,
+    rstn: L.rstn,
+    rst: L.rst,
+    mid: L.mid,
     
     spl: L.spl,
-    //grp: L.grp,
+    grp: L.grp,
     //par: L.par,
     //tup: L.tup,
     
