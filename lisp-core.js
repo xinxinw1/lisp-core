@@ -167,7 +167,7 @@
     //tup: L.tup,
     
     joi: L.joi,
-    //fla: L.fla,
+    fla: L.fla,
     app: L.app,
     
     //evry: L.evry,
@@ -177,8 +177,8 @@
     foldr: L.foldr,
     foldri: L.foldri,
     
-    //hea: L.hea,
-    //tai: L.tai,
+    hea: L.hea,
+    tai: L.tai,
     
     //beg: chrb(L.beg),
     //end: chrb(L.end),
