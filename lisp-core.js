@@ -180,7 +180,7 @@
     hea: L.hea,
     tai: L.tai,
     
-    //beg: chrb(L.beg),
+    beg: chrb(L.beg),
     //end: chrb(L.end),
     //bnd: chrb(L.bnd),
     
@@ -197,8 +197,8 @@
     nrev: L.nrev,
     //napp: L.napp,
     
-    //low: L.low,
-    //upp: L.upp,
+    low: L.low,
+    upp: L.upp,
     stf: L.stf,
     
     odd: chrb(L.oddp),
