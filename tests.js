@@ -44,3 +44,5 @@ testevl("(let a {a 3} (oput a 'b 5) a)", "{a 3 b 5}");
 
 testevl("(let a {a 3} (owith a 'a 5))", "{a 5}");
 testevl("(let a {a 3} (owith a 'a 5) a)", "{a 3}");
+
+testevl("((fn ((o a 3)) a))", "3")
