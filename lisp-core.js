@@ -184,7 +184,7 @@
     //end: chrb(L.end),
     //bnd: chrb(L.bnd),
     
-    //eachfn: L.each,
+    eachfn: L.each,
     //oeachfn: L.oeach,
     
     psh: L.psh,
