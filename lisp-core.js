@@ -286,7 +286,8 @@
     return evls($.get(a));
   }
   
-  evlf("lib/lisp-core/lisp-core.lisp");
+  if (!$.udfp($.libdir))evlf($.libdir + "/lisp-core/lisp-core.lisp");
+  else evlf("lib/lisp-core/lisp-core.lisp");
   
   ////// Object exposure //////
   
