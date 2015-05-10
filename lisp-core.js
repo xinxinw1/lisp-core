@@ -286,7 +286,7 @@
     return evls($.get(a));
   }
   
-  evlf("lib/lisp-core.lisp");
+  evlf("lib/lisp-core/lisp-core.lisp");
   
   ////// Object exposure //////
   
