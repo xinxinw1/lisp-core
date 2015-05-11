@@ -10,6 +10,11 @@
 (def aqt (a) (lis 'qt a))
 (def auq (a) (lis 'uq a))
 
+(mac nfn (a) `(fn (_) ,a))
+
+(mac mapn (bd a)
+  `(map (fn (_) ,bd) ,a))
+
 (mac . (x . a)
   (if (no a) x
       `(. ,(let y (car a)
@@ -19,7 +24,7 @@
 
 (mac byn (n nm op)
   `(mac ,nm #g
-     `(do ,@(map [qq (,,op ,@_)] (grp #g ,n)))))
+     `(do ,@(mapn `(,,op ,@_) (grp #g ,n)))))
 
 (mac byone (nm op)
   `(byn 1 ,nm ,op))
@@ -32,10 +37,8 @@
 (mac alias1 (new old)
   `(mac ,new #args `(,,old ,@#args)))
 
-(mac nfn (a) `(fn (_) ,a))
-
 ; simple block
-(mac sblk a
+(mac sblock a
   `((fn () ,@a)))
 
 (mac let (a x . bd)
@@ -50,6 +53,7 @@
     (if (no r) `(do ,@bd)
         `(with ,r ,@bd))))
 
+; (remdup '(a a b c c d e e)) -> (b c c d)
 (def remdup (a)
   (if (no a) nil
       (no (cdr a)) (lis (car a))
@@ -61,21 +65,26 @@
       `(let ,(car vs) ,(cadr vs)
          (withs ,(cddr vs) ,@bd))))
 
-(mac slis (a . bd)
+; with list
+(mac w/lis (a . bd)
   `(if (atm? ,a) (let ,a (lis ,a) ,@bd)
        (do ,@bd)))
 
-(mac wgs (nm . bd)
-  (slis nm
+(mac w/gs (nm . bd)
+  (w/lis nm
     `(with ,(afta nm '(gs)) ,@bd)))
 
 (def mapapp (f a)
   (apl app (map f a)))
 
-(mac wrec (vs . bd)
+(mac mapnapp (bd a)
+  `(apl app (mapn ,bd ,a)))
+
+; with recursive
+(mac w/rec (vs . bd)
   (let g (grp vs 2)
-    `(with ,(mapapp [lis (car _) nil] g)
-        ,@(map [qq (= ,(car _) ,(cadr _))] g)
+    `(with ,(mapnapp `((car ,_) nil) g)
+        ,@(mapn `(= ,(car _) ,(cadr _)) g)
         ,@bd)))
 
 (def afta (a x)
@@ -102,7 +111,7 @@
   `(let ,nm (mc ,@mbd) ,@bd))
 
 (mac mwith (as . bd)
-  `(with ,(mapapp [lis (car _) `(mc ,@(cdr _))] as) ,@bd))
+  `(with ,(mapnapp `(,(car _) (mc ,@(cdr _))) as) ,@bd))
 
 (mac mover (nm ag . bd)
   `(let sup ,nm
@@ -121,11 +130,12 @@
 (mac tailrec (nm vs . bd)
   (let g (grp vs 2)
     `(mlet (,nm ,(map car g)
-             `(nrt (do ,,@(map [qq (= ,_ ,(auq _))] (map car g)))))
+             `(nrt (do ,,@(mapn `(= ,_ ,(auq _)) (map car g)))))
        (with ,vs
          (infloop
            (ret ,@bd))))))
 
+; n gensyms
 (mac ngs (n v . bd)
   `(let ,v (mkngs ,n) ,@bd))
 
@@ -194,7 +204,7 @@
 #|(mac once (vs . bd)
   (if (sym? vs) `(once (,vs) ,@bd)
       (ngs (len vs) gens
-        `(wgs ,gens
+        `(w/gs ,gens
           `(with ,,(map auq (fla (par gens vs)))
              ,(with ,(fla (par vs gens)) ,@bd))))))|#
 
@@ -211,9 +221,9 @@
       (app (par (car a) (car b)) (par (cdr a) (cdr b)))))
 
 (mac once (vs . bd)
-  (slis vs
+  (w/lis vs
     (ngs (len vs) gens
-      `(with ,(fla (par gens (map [qq (if (sym? ,_) ,_ (gs))] vs)))
+      `(with ,(fla (par gens (mapn `(if (sym? ,_) ,_ (gs)) vs)))
          (gswith (lis ,@gens) (lis ,@vs)
            (with ,(fla (par vs gens)) ,@bd))))))
 
@@ -238,48 +248,49 @@
 
 (with (gs1 (lis nil) gs2 retfr)
   (let retfr (mc (s r)
-               (if (is s 'a) `(thr gs1 ,r)
+               (if (is s 'a) `(throw gs1 ,r)
                    `(gs2 ,s ,r)))
-    (cat gs1
+    (catch gs1
       (prn " Entering BLOCK")
       (bar [retfr a])
       (prn " Leaving BLOCK"))
 |#
 
-(mac blk (v . bd)
+(mac block (v . bd)
   `(with (#g (lis nil) #retfr retfr)
      (mlet (retfr (s r)
-             (if (is s ',v) `(thr #g ,r)
+             (if (is s ',v) `(throw #g ,r)
                  `(#retfr ,s ,r)))
-       (cat #g ,@bd))))
+       (catch #g ,@bd))))
 
+; block def
 (mac bdef (nm ag . bd)
-  `(def ,nm ,ag (blk ,nm ,@bd)))
+  `(def ,nm ,ag (block ,nm ,@bd)))
 
 (mac brfn (nm ag . bd)
-  `(rfn ,nm ,ag (blk ,nm ,@bd)))
+  `(rfn ,nm ,ag (block ,nm ,@bd)))
 
 #|
 (loop (var i 0) (< i 10) (++ i)
   (if (is i 3) (cont))
   (prn i))
 ->
-(sblk
+(sblock
   (mlet (cont () `(retfr #g))
     (var i 0)
     (while (< i 10)
-      (blk #g
+      (block #g
         (if (is i 3) (cont))
         (prn i))
       (++ i))))
 |#
 
 (mac loop (st p up . bd)
-  `(sblk
+  `(sblock
      (mlet (cont () `(retfr #g))
        ,st
        (while ,p
-         (blk #g ,@bd)
+         (block #g ,@bd)
          ,up))))
 
 (mac for (i n m . bd)
@@ -294,14 +305,14 @@
   (once n
     `(loop (var ,i 0) (< ,i ,n) (++ ,i) ,@bd)))
 
-(mac fr (i n . bd)
+(mac from (i n . bd)
   `(down ,i ,n 0 ,@bd))
   
 (mac idx (i a . bd)
   `(to ,i (len ,a) ,@bd))
 
-(mac idr (i a . bd)
-  `(fr ,i (- (len ,a) 1) ,@bd))
+(mac idxr (i a . bd)
+  `(from ,i (- (len ,a) 1) ,@bd))
 
 (mac rep (n . bd)
   `(down #i ,n 1 ,@bd))
@@ -316,6 +327,7 @@
      (oeachfn ,a
        (brfn #g (,i ,x) ,@bd))))
 
+; nof collect
 (mac nofcol (n a)
   `(let #g nil
      (rep ,n (psh ,a #g))
@@ -327,9 +339,9 @@
       `(if ,(car a) (and ,@(cdr a)))))
 
 (mac or a
-  (wgs g
+  (w/gs g
     `(let ,g nil
-        (if ,@(afta (map [qq (= ,g ,_)] a) g)))))
+        (if ,@(afta (mapn `(= ,g ,_) a) g)))))
 
 #|
 (or a b c)
@@ -420,7 +432,7 @@
 (mac tags a
   (let (beftag . s) (splbef a sym?)
     `(mlet (go (a) `(ret (,a)))
-        (sblk ,@beftag
+        (sblock ,@beftag
               ,@(let g (maplis [lisd (caar _) (caadr _) (cdar _)] s)
                   (map mktag1 g))
               (,(caar s))))))
@@ -471,7 +483,7 @@
            str? ""
            syn? (sli 't 1)
            (err nof "Can't make n = $1 of a = $2" n a))
-    (rep n (= r (app r a)))
+    (rep n (app= r a))
     r))
 
 (def isn (a b)
@@ -521,7 +533,7 @@
   `(let ,a (smc ,x) ,@bd))
 
 (mac smwith (vs . bd)
-  `(with ,(mapapp [lis (car _) `(smc ,(cadr _))] (grp vs 2))
+  `(with ,(mapnapp `(,(car _) (smc ,(cadr _))) (grp vs 2))
      ,@bd))
 
 (mac olay (a)
@@ -557,7 +569,7 @@
      (al ,(joi (mapi (fn (_ i) (str _ " = $" i)) a 1) " | ") @#g)
      (las #g)))
 
-(mac bugn (nm . a)
+(mac bugnm (nm . a)
   `(let #g (lis ,@a)
      (al (str ,nm " | "
               ,(joi (mapi (fn (_ i) (str _ " = $" i))
@@ -567,7 +579,7 @@
      (las #g)))
 
 (mac bugm (nm . a)
-  `(do ,@(map [qq (bugn ,nm ,_)] a)))
+  `(do ,@(mapn `(bugnm ,nm ,_) a)))
 
 (def mapi (f a (o i 0))
   (if (no a) nil
