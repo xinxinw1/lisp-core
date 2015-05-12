@@ -9,6 +9,8 @@
 (function (win, udf){
   ////// Import //////
   
+  var udfp = $.udfp;
+  
   var dsj = L.dsj;
   var prs = L.prs;
   var evl = L.evl;
@@ -35,12 +37,26 @@
     dat: L.dat,
     sdat: L.sdat,
     
-    mkdat: function lmkdat(t, d){
-             return L.mkdat(L.jstr(t), d);
+    mk: function lmk(t, o){
+          return L.mk(L.jstr(t), L.dat(o));
+        },
+    
+    mkdat: function lmkdat(t, d, o){
+             return L.mkdat(L.jstr(t), d, udfp(o)?o:L.dat(o));
            },
     mkbui: function lmkbui(t){
              return L.jn(L.mkbui(t));
            },
+           
+    sy: L.sy,
+    nu: L.nu,
+    st: L.st,
+    ar: L.ar,
+    ob: L.ob,
+    rx: L.rx,
+    jn: L.jn,
+    ma: L.ma,
+    sm: L.sm,
            
     car: L.car,
     cdr: L.cdr,
@@ -140,7 +156,11 @@
     //cal: L.cal,   would convert args to js arr then back to lisp list
     map: L.map,
     //dmap: L.dmap,
-    pos: L.pos,
+    pos: function lpos(x, a, n){
+      var o = L.pos(x, a, n);
+      if (L.is(o, L.nu("-1")))return L.nil();
+      return o;
+    },
     has: chrb(L.has),
     //all: chrb(L.all),
     //keep: L.keep,
@@ -178,8 +198,8 @@
     foldr: L.foldr,
     foldri: L.foldri,
     
-    hea: L.hea,
-    tai: L.tai,
+    head: L.head,
+    tail: L.tail,
     
     beg: chrb(L.beg),
     //end: chrb(L.end),
@@ -285,6 +305,12 @@
   function evlf(a){
     return evls($.get(a));
   }
+  
+  djn({
+    load: function load(a){
+      return evl(prs($.get(L.jstr(a))));
+    }
+  });
   
   if (!$.udfp($.libdir))evlf($.libdir + "/lisp-core/lisp-core.lisp");
   else evlf("lib/lisp-core/lisp-core.lisp");

@@ -22,19 +22,31 @@
                    `((. ,x ,(car y)) ,@(cdr y))))
           ,@(cdr a))))
 
-(mac byn (n nm op)
+(mac by (n nm op)
   `(mac ,nm #g
      `(do ,@(mapn `(,,op ,@_) (grp #g ,n)))))
 
-(mac byone (nm op)
-  `(byn 1 ,nm ,op))
+#|(mac byone (nm op)
+  `(by 1 ,nm ,op))
 
 (mac bytwo (nm op)
-  `(byn 2 ,nm ,op))
+  `(by 2 ,nm ,op))|#
 
-(bytwo alias alias1)
+#|
+(macby hey (a b) `(prn (+ ,a ,b)))
+(hey 1 2  3 4  5 6)
+->
+3
+7
+11
+nil
+|#
 
-(mac alias1 (new old)
+(mac macby (nm ag . bd)
+  `(do (mac #g ,ag ,@bd)
+       (by ,(len ag) ,nm #g)))
+
+(macby alias (new old)
   `(mac ,new #args `(,,old ,@#args)))
 
 ; simple block
@@ -322,10 +334,89 @@
      (eachfn ,a
        (brfn #g (,x) ,@bd))))
 
+(mac eachexist (x a . bd)
+  `(each ,x ,a
+     (if (no ,x) (cont))
+     ,@bd))
+
+#|
+(w/fst
+  (each x '(1 2 3 4 5)
+    (if fst (prn "first"))
+    (prn x)))
+->
+first
+1
+2
+3
+4
+5
+nil
+|#
+
+(mac w/fsti (i a)
+  `(let ,i t
+     ,(tail a `(if ,i (= ,i nil)))))
+
+(mac w/fst (a)
+  `(w/fsti fst ,a))
+
 (mac oeach (i x a . bd)
   `(mlet (cont () `(retfr #g))
      (oeachfn ,a
        (brfn #g (,i ,x) ,@bd))))
+
+(mac iflet (i a . rst)
+  `(let ,i ,a
+     (if ,i ,@rst)))
+
+(mac run (f a . opt)
+  (w/gs (g fst)
+    `(w/fsti ,fst
+       (each ,g ,a
+         ,(if (has 'skip-nil opt) `(if (no ,g) (cont)))
+         ,(iflet r (has 'btw opt) `(unless ,fst ,(cadr r)))
+         (,f ,g)))))
+
+(mac runexist (f a . opt)
+  `(run ,f ,a skip-nil ,@opt))
+
+#|
+doesn't work:
+(macgs *defs*
+  (var *defs* {})
+  (def setdef (a x)
+    (= (*defs* a) x)))
+->
+(var gs1 {})
+(def setdef (a x)
+  (= (gs1 a) x))
+|#
+
+#|(mac macgs (v . bd)
+  `(smlet ,v #g ,@bd))
+
+(macgs *defs*
+  (var *defs* {})
+  (def setdef (a x)
+    (= (*defs* a) x)))
+
+(mac defvar1 (a x)
+  `(do (var ,a ,x)
+       (setdef ',a ,x)))
+
+(bytwo defvar defvar1)|#
+
+(var *defaults* {})
+(def setdef (a x)
+  (= (*defaults* a) x))
+
+(macby defvar (a x)
+  `(do (var ,a ,x)
+       (setdef ',a ,x)))
+
+(macby reset (a)
+  `(= ,a (*defaults* ',a)))
 
 ; nof collect
 (mac nofcol (n a)
@@ -414,15 +505,82 @@
       (is (car a) 'o) (lis (cadr a))
       (app (pnms (car a)) (pnms (cdr a)))))
 
+#|
+(casef > 3
+  1 'hey
+  2 'what
+  3 'whoa
+  4 'yay
+  5 'huh
+  'no)
+->
+yay
+|#
+
+#|(mac casef (f x . a)
+  (once x
+    `(if ,@(mkcasef f x a))))
+
+(def mkcasef (f x a)
+  (if (no a) nil
+      (no (cdr a)) (lis (car a))
+      (lisd `(,f ,(car a) ,x) (cadr a)
+             (mkcasef f x (cddr a)))))|#
+
+#|
+(mac case (x . a)
+  `(casef (fn (a x) ((tfn a) x)) ,x
+     ,@a))
+|#
+
 (mac case (x . a)
   (once x
     `(if ,@(mkcase x a))))
 
-(def mkcase (g a)
+(def mkcase (x a)
   (if (no a) nil
       (no (cdr a)) (lis (car a))
-      (lisd `((tfn ,(car a)) ,g) (cadr a)
-             (mkcase g (cddr a)))))
+      (lisd `((tfn ,(car a)) ,x) (cadr a)
+             (mkcase x (cddr a)))))
+
+; same as case but using is for comparison instead of tfn
+#|(mac caseis (x . a)
+  `(casef is ,x ,@a))|#
+#|
+
+(casesym 'test
+  a 'hey
+  b 'what
+  (c d e) 'you
+  'else)
+  
+->
+
+(case 'test
+  'a 'hey
+  'b 'what
+  (infn 'c 'd 'e) 'you
+  'else)
+  
+|#
+  
+
+(mac casesym (x . a)
+  `(case ,x ,@(mkcasesym a)))
+
+(def mkcasesym (a)
+  (if (no a) nil
+      (no (cdr a)) (lis (car a))
+      (lisd (if (atm? (car a))
+                `',(car a)
+                `(infn ,@(mapn `',_ (car a))))
+            (cadr a)
+            (mkcasesym (cddr a)))))
+
+(def infn a [has _ a])
+
+(mac casetyp (x . a)
+  `(casesym (typ ,x) ,@a))
 
 (def splbef (a x (o l))
   (if (no a) (lis (nrev l))
@@ -469,6 +627,12 @@
      (= ,a ,x)
      (prot (do ,@bd)
        (= ,a #ori))))
+
+(mac dyn+= (a x . bd)
+  `(dyn ,a (+ ,a ,x) ,@bd))
+
+(mac dynzap (f a . bd)
+  `(dyn ,a (,f ,a) ,@bd))
 
 (mac sta (a x . bd)
   `(do (psh ,x ,a)
@@ -584,3 +748,30 @@
 (def mapi (f a (o i 0))
   (if (no a) nil
       (cons (f (car a) i) (mapi f (cdr a) (+ i 1)))))
+
+; (flatall '((ts g e (ge ef)) (e f e) (f e))) -> (ts g e ge ef e f e f e)
+(def flatall (a)
+  (if (no a) nil
+      (atm? (car a)) (cons (car a) (flatall (cdr a)))
+      (app (flatall (car a)) (rflatall (cdr a)))))
+
+; applies f to dat property of a
+; (calldat [+ _ 3] (mkdat 'test 3 {a 5})) -> <test {a 5 data 6}>
+(def calldat (f a)
+  (mkdat (typ a) (f (dat a)) (ob a)))
+
+(macby defbui (tp)
+  `(def ,tp (a) (mkdat ',tp a)))
+
+(macby defbuil (tp)
+  `(def ,tp a (mkdat ',tp a)))
+
+(mac package (nm . bd)
+  `(do (var ,nm {})
+       (sblock
+         (macby export (a)
+           `(= (,,nm ',a) ,a))
+         ,@bd)))
+
+(mac import (nm . vs)
+  `(do ,@(mapn `(var ,_ (,nm ',_)) vs)))
