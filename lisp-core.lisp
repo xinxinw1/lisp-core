@@ -137,14 +137,14 @@ nil
   (let g (grp vs 2)
     `((rfn ,nm ,(map car g) ,@bd) ,@(map cadr g))))
 
-(mac infloop a `(whi true ,@a))
+(mac forever a `(whi true ,@a))
 
 (mac tailrec (nm vs . bd)
   (let g (grp vs 2)
     `(mlet (,nm ,(map car g)
              `(nrt (do ,,@(mapn `(= ,_ ,(auq _)) (map car g)))))
        (with ,vs
-         (infloop
+         (forever
            (ret ,@bd))))))
 
 ; n gensyms
@@ -736,9 +736,7 @@ yay
 (mac bugnm (nm . a)
   `(let #g (lis ,@a)
      (al (str ,nm " | "
-              ,(joi (mapi (fn (_ i) (str _ " = $" i))
-                          a 1)
-                    " | "))
+              ,(joi (mapi (fn (_ i) (str _ " = $" i)) a 1) " | "))
          @#g)
      (las #g)))
 
@@ -765,6 +763,17 @@ yay
 
 (macby defbuil (tp)
   `(def ,tp a (mkdat ',tp a)))
+
+(mac defbuild (tp ag opt)
+  `(def ,tp ,ag
+     (mk ',tp ,opt)))
+
+(mac defbuidat (tp ag a opt)
+  `(def ,tp ,ag
+     (mkdat ',tp ,a ,opt)))
+
+(macby defpred (tp)
+  `(def ,(app tp '?) (a) (isa ',tp a)))
 
 (mac package (nm . bd)
   `(do (var ,nm {})

@@ -38,7 +38,7 @@
     sdat: L.sdat,
     
     mk: function lmk(t, o){
-          return L.mk(L.jstr(t), L.dat(o));
+          return L.mk(L.jstr(t), udfp(o)?o:L.dat(o));
         },
     
     mkdat: function lmkdat(t, d, o){
@@ -77,7 +77,7 @@
   
   bol({
     isa: function lisa(t, a){
-           return L.isa(L.jstr(t), a);
+           return L.chkb(L.isa(L.jstr(t), a));
          },
     isany: function lisany(t){
              var r = $.cpy(arguments);
