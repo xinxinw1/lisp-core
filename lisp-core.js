@@ -117,7 +117,7 @@
     "jn?": L.jnp,
     "mac?": L.macp,
     "spec?": L.specp,
-    "prc?": L.prcp,
+    "proc?": L.procp,
     
     is: L.is,
     isn: L.isn,
@@ -171,7 +171,7 @@
     
     len: L.len,
     emp: chrb(L.emp),
-    cpy: L.cpy,
+    copy: L.cpy,
     //cln: L.cln,
     rev: L.rev,
     nrev: L.nrev,
@@ -187,8 +187,8 @@
     //par: L.par,
     //tup: L.tup,
     
-    joi: L.joi,
-    fla: L.fla,
+    join: L.joi,
+    flat: L.fla,
     app: L.app,
     
     //evry: L.evry,
@@ -208,7 +208,7 @@
     eachfn: L.each,
     //oeachfn: L.oeach,
     
-    psh: L.psh,
+    push: L.psh,
     pop: L.pop,
     //ush: L.ush,
     //shf: L.shf,
