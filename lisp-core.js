@@ -102,10 +102,10 @@
   
   bol({
     "tag?": L.tagp,
-    "lis?": L.lisp,
+    "list?": L.listp,
     "atm?": L.atmp,
     "nil?": L.nilp,
-    "cons?": L.consp,
+    "lis?": L.lisp,
     "syn?": L.synp,
     "sym?": L.symp,
     "num?": L.nump,
