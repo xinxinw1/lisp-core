@@ -10,17 +10,13 @@
 (def aqt (a) (lis 'qt a))
 (def auq (a) (lis 'uq a))
 
+(mac no (a) `(nil? ,a))
+(mac not (a) `(no ,a))
+
 (mac fn1 (a) `(fn (_) ,a))
 
 (mac mapn (bd a)
-  `(map (fn (_) ,bd) ,a))
-
-(mac . (x . a)
-  (if (no a) x
-      `(. ,(let y (car a)
-               (if (atm? y) `(,x ',y)
-                   `((. ,x ,(car y)) ,@(cdr y))))
-          ,@(cdr a))))
+  `(map (fn1 ,bd) ,a))
 
 (mac by (n nm op)
   `(mac ,nm #g
@@ -58,7 +54,7 @@ nil
 
 ; (splevery 3 '(1 2 3 4 5 6 7 8)) -> #[(1 4 7) (2 5 8) (3 6)]
 ; like (buckets (let i 0 [do1 (% i n) (++ i)]) a)
-(def splevery (n a (o m 0))
+#|(def splevery (n a (o m 0))
   (let r #[]
     (each x a
       ; (insure (r m) nil (push x (r m)))
@@ -69,7 +65,7 @@ nil
     (map nrev r)))
 
 (def splevery2 (a)
-  (splevery 2 a))
+  (splevery 2 a))|#
 
 #|(mac with (vs . bd)
   (let g (grp vs 2)
@@ -79,17 +75,17 @@ nil
   (let g (grp vs 2)
     `((fn ,(map car g) ,@bd) ,@(map cadr g))))
 
-(mac withi (vs . bd)
-  (let r (remdup vs)
-    (if (no r) `(do ,@bd)
-        `(with ,r ,@bd))))
-
 ; (remdup '(a a b c c d e e)) -> (b c c d)
 (def remdup (a)
   (if (no a) nil
       (no (cdr a)) (lis (car a))
       (is (car a) (cadr a)) (remdup (cddr a))
       (lisd (car a) (cadr a) (remdup (cddr a)))))
+
+(mac withi (vs . bd)
+  (let r (remdup vs)
+    (if (no r) `(do ,@bd)
+        `(with ,r ,@bd))))
 
 (mac withs (vs . bd)
   (if (no vs) `(do ,@bd)
@@ -104,6 +100,8 @@ nil
 (mac runon (a . bd)
   `(runoni _ ,a ,@bd))
 
+; named function
+; (nfn hey (a) (prn a)) -> <fn hey (a)>
 (mac nfn (nm ag . bd)
   `(runoni #_ (fn ,ag ,@bd)
      (=nm #_ ',nm)))
@@ -111,6 +109,18 @@ nil
 (mac nmc (nm ag . bd)
   `(runoni #_ (mc ,ag ,@bd)
      (=nm #_ ',nm)))
+
+(def afta (a x)
+  (if (no a) nil
+      (lisd (car a) x (afta (cdr a) x))))
+
+(def befa (a x)
+  (if (no a) nil
+      (lisd x (car a) (befa (cdr a) x))))
+
+(def btwa (a x)
+  (if (no a) nil
+      (cons (car a) (befa (cdr a) x))))
 
 ; with list
 (mac w/lis (a . bd)
@@ -133,18 +143,6 @@ nil
     `(with ,(mapnapp `((car ,_) nil) g)
         ,@(mapn `(= ,(car _) ,(cadr _)) g)
         ,@bd)))
-
-(def afta (a x)
-  (if (no a) nil
-      (lisd (car a) x (afta (cdr a) x))))
-
-(def befa (a x)
-  (if (no a) nil
-      (lisd x (car a) (befa (cdr a) x))))
-
-(def btwa (a x)
-  (if (no a) nil
-      (cons (car a) (befa (cdr a) x))))
 
 (mac rfn (nm ag . bd)
   `(let ,nm nil
@@ -173,7 +171,6 @@ nil
   `(with ,(mapnapp `(,(car _) (smc ,(cadr _))) (grp vs 2))
      ,@bd))
 
-
 (mac defover (nm ag . bd)
   `(let sup ,nm
      (= ,nm (nfn ,nm ,ag ,@bd))))
@@ -200,7 +197,7 @@ nil
   (let g (grp vs 2)
     `((rfn ,nm ,(map car g) ,@bd) ,@(map cadr g))))
 
-(mac forever a `(whi true ,@a))
+(mac forever a `(while t ,@a))
 
 (mac tailrec (nm vs . bd)
   (let g (grp vs 2)
@@ -210,25 +207,9 @@ nil
          (forever
            (ret ,@bd))))))
 
-(mac w/collr (nm . bd)
-  `(let #g nil
-     (flet (,nm (a) (push a #g))
-       ,@bd)
-     (nrev #g)))
-
-; (w/coll (for i 1 10 (coll i))) -> (1 2 3 4 5 6 7 8 9 10)
-(mac w/coll bd
-  `(w/collr coll ,@bd))
-
-; (let a 0 (nofcoll 5 (++ a))) -> (1 2 3 4 5)
-; nof collect
-(mac repcoll (n . bd)
-  `(w/collr #coll
-     (rep ,n (#coll (do ,@bd)))))
-
-(mac forcoll (i n m . bd)
-  `(w/collr #coll
-     (for ,i ,n ,m (#coll (do ,@bd)))))
+(def mkngs (n)
+  (if (is n 0) nil
+      (cons (gs) (mkngs (- n 1)))))
 
 ; n gensyms
 ; can't use repcoll because of ngs -> repcoll -> rep -> down -> once -> ngs
@@ -237,10 +218,6 @@ nil
 
 #|(mac ngs (n v . bd)
   `(let ,v (repcoll ,n (gs)) ,@bd))|#
-
-(def mkngs (n)
-  (if (is n 0) nil
-      (cons (gs) (mkngs (- n 1)))))
 
 #|
 (with (a 1 b 2 c 3)
@@ -319,13 +296,6 @@ nil
       (atm? a) (lis (lis a b))
       (app (pair (car a) (car b)) (pair (cdr a) (cdr b)))))
 
-(mac once (vs . bd)
-  (w/lis vs
-    (ngs (len vs) gens
-      `(with ,(flat (pair gens (mapn `(if (sym? ,_) ,_ (gs)) vs)))
-         (gswith (lis ,@gens) (lis ,@vs)
-           (with ,(flat (pair vs gens)) ,@bd))))))
-
 (def gswith (gens vs rst)
   `(withi ,(gslis gens vs) ,rst))
 
@@ -333,6 +303,63 @@ nil
   (if (or (no gens) (no vs)) nil
       (sym? (car vs)) (gslis (cdr gens) (cdr vs))
       (app (lis (car gens) (car vs)) (gslis (cdr gens) (cdr vs)))))
+
+(mac once (vs . bd)
+  (w/lis vs
+    (ngs (len vs) gens
+      `(with ,(flat (pair gens (mapn `(if (sym? ,_) ,_ (gs)) vs)))
+         (gswith (lis ,@gens) (lis ,@vs)
+           (with ,(flat (pair vs gens)) ,@bd))))))
+
+#|
+(prepif (no (set? 'a)) (let a 3)
+  (al a))
+->
+(if (no (set? 'a)) (let a 3 (al a))
+    (do (al a)))
+|#
+
+; prepend if
+(mac prepif (c p . bd)
+  `(if ,c ,(app p bd) (do ,@bd)))
+
+; if v is not set, set it to d before running bd
+(mac insure (v d . bd)
+  `(prepif (no (set? ',v)) (let ,v ,d)
+     ,@bd))
+
+(mac globinsure (v d . bd)
+  `(prepif (no (set? ',v)) (do (glob ,v ,d))
+     ,@bd))
+
+(mac dyn (a x . bd)
+  `(globinsure ,a nil
+     (let #ori ,a
+       (= ,a ,x)
+       (prot (do ,@bd)
+         (= ,a #ori)))))
+
+(mac dyn+= (a x . bd)
+  `(dyn ,a (+ ,a ,x) ,@bd))
+
+(mac dynzap (f a . bd)
+  `(dyn ,a (,f ,a) ,@bd))
+
+(mac sta (a x . bd)
+  `(do (push ,x ,a)
+       (prot (do ,@bd)
+         (pop ,a))))
+
+(mac dynwith (vs . bd)
+  (if (no vs) `(do ,@bd)
+      `(dyn ,(car vs) ,(cadr vs)
+         (dynwith ,(cddr vs) ,@bd))))
+
+(mac dynmlet ((nm . mbd) . bd)
+  `(dyn ,nm (nmc ,nm ,@mbd) ,@bd))
+
+(mac dynmwith (as . bd)
+  `(dynwith ,(mapapp (fn ((nm . bd)) `(,nm (nmc ,nm ,@bd))) as) ,@bd))
 
 (mac deferr (nm ag . eag)
   `(mac ,nm ,ag
@@ -379,6 +406,10 @@ nil
 (mac brfn (nm ag . bd)
   `(rfn ,nm ,ag (block ,nm ,@bd)))
 
+(mac w/exiter (nm fr . bd)
+  `(flet (,nm (a) (retfrom ,fr a))
+     ,@bd))
+
 #|(mac w/exit (nm . bd)
   `(block #g
      (mlet (,nm (a) `(retfrom #g ,a))
@@ -389,13 +420,21 @@ nil
      (w/exiter ,nm #g
        ,@bd)))
 
-(mac w/exiter (nm fr . bd)
-  `(flet (,nm (a) (retfrom ,fr a))
-     ,@bd))
-
 (mac w/mexiter (nm fr . bd)
   `(mlet (,nm (a) `(retfrom ,,fr ,a))
      ,@bd))
+
+(mac zap (f a . rst)
+  `(= ,a (,f ,a ,@rst)))
+
+;(mac += (a x) `(= ,a (+ ,a ,x)))
+(mac += (a . x) `(zap + ,a ,@x))
+(mac -= (a . x) `(zap - ,a ,@x))
+(mac app= (a . x) `(zap app ,a ,@x))
+(mac zappop (a) `(zap cdr ,a))
+
+(mac ++ (a) `(+= ,a 1))
+(mac -- (a) `(-= ,a 1))
 
 #|
 (loop (var i 0) (< i 10) (++ i)
@@ -466,9 +505,6 @@ nil
 (mac rep (n . bd)
   `(down #i ,n 1 ,@bd))
 
-(mac zappop (a)
-  `(zap cdr ,a))
-
 #|(mac eachlis (x a . bd)
   `(loop (#a ,a ,x nil) #a (zappop #a)
      (= ,x (car #a))
@@ -494,6 +530,29 @@ nil
   `(each ,x ,a
      (if (no ,x) (cont))
      ,@bd))
+
+(mac w/collr (nm . bd)
+  `(let #g nil
+     (flet (,nm (a) (push a #g))
+       ,@bd)
+     (nrev #g)))
+
+; (w/coll (for i 1 10 (coll i))) -> (1 2 3 4 5 6 7 8 9 10)
+(mac w/coll bd
+  `(w/collr coll ,@bd))
+
+; (let a 0 (nofcoll 5 (++ a))) -> (1 2 3 4 5)
+; nof collect
+(mac repcoll (n . bd)
+  `(w/collr #coll
+     (rep ,n (#coll (do ,@bd)))))
+
+(mac forcoll (i n m . bd)
+  `(w/collr #coll
+     (for ,i ,n ,m (#coll (do ,@bd)))))
+
+(def lisfor (n m)
+  (forcoll i n m i))
 
 #|
 (w/fst
@@ -526,12 +585,22 @@ nil
   `(let ,i ,a
      (if ,i ,@rst)))
 
+(mac when (ts . bd)
+  `(if ,ts (do ,@bd)))
+
+(mac ifnot (ts . bd)
+  `(when (not ,ts)
+     ,@bd))
+
+(def isn (a b)
+  (not (is a b)))
+
 (mac run (f a . opt)
   (w/gs (g fst)
     `(w/fsti ,fst
        (each ,g ,a
          ,(if (has 'skip-nil opt) `(if (no ,g) (cont)))
-         ,(iflet r (has 'btw opt) `(unless ,fst ,(cadr r)))
+         ,(iflet r (has 'btw opt) `(ifnot ,fst ,(cadr r)))
          (,f ,g)))))
 
 (mac runexist (f a . opt)
@@ -591,11 +660,13 @@ doesn't work:
          (= gs b) gs
          (= gs c) gs))
 |#
-(mac no (a) `(nil? ,a))
-(mac not (a) `(no ,a))
 
-(mac when (ts . bd)
-  `(if ,ts (do ,@bd)))
+(mac . (x . a)
+  (if (no a) x
+      `(. ,(let y (car a)
+               (if (atm? y) `(,x ',y)
+                   `((. ,x ,(car y)) ,@(cdr y))))
+          ,@(cdr a))))
 
 (mac mmac (name arg1 arg2 . body)
   `(mac ,name ,arg1
@@ -605,15 +676,6 @@ doesn't work:
 ; -> ((. x a b c) 1 2 3)
 (mmac dtfn a (x . args)
   `((. ,x ,@a) ,@args))
-
-(mac zap (f a . rst)
-  `(= ,a (,f ,a ,@rst)))
-
-(mac += (a x) `(= ,a (+ ,a ,x)))
-(mac -= (a x) `(= ,a (- ,a ,x)))
-
-(mac ++ (a) `(+= ,a 1))
-(mac -- (a) `(-= ,a 1))
 
 (var mcxp nil)
 (def mcx1 (a)
@@ -644,16 +706,16 @@ doesn't work:
   (once x
     `(or ,@(map [qq (is ,x ,_)] a))))
 
-(mac inl (nm ag . bd)
-  `(mac ,nm ,ag
-     `(do ,,@(let p (pnms ag)
-               (dmap [if (has _ p) (auq _) _] bd)))))
-
 (def pnms (a)
   (if (no a) nil
       (atm? a) (lis a)
       (is (car a) 'o) (lis (cadr a))
       (app (pnms (car a)) (pnms (cdr a)))))
+
+(mac inl (nm ag . bd)
+  `(mac ,nm ,ag
+     `(do ,,@(let p (pnms ag)
+               (dmap [if (has _ p) (auq _) _] bd)))))
 
 #|
 (casef > 3
@@ -713,10 +775,8 @@ yay
   'else)
   
 |#
-  
 
-(mac casesym (x . a)
-  `(case ,x ,@(mkcasesym a)))
+(def infn a [has _ a])
 
 (def mkcasesym (a)
   (if (no a) nil
@@ -727,7 +787,8 @@ yay
             (cadr a)
             (mkcasesym (cddr a)))))
 
-(def infn a [has _ a])
+(mac casesym (x . a)
+  `(case ,x ,@(mkcasesym a)))
 
 (mac casetyp (x . a)
   `(casesym (typ ,x) ,@a))
@@ -755,6 +816,9 @@ yay
      ,@bd
      ,(if (no tg) nil `(,tg))))
 
+; group overlap
+; (grpovr '(1 2 3 4 5 6 7 8) 3 0) -> ((1 2 3) (4 5 6) (7 8))
+; (grpovr '(1 2 3 4 5 6 7 8) 3 1) -> ((1 2 3) (3 4 5) (5 6 7) (7 8))
 (def grpovr (a n m)
   (if (>= m n) (err grpovr "m = $1 must be < n = $2" m n)
       (no a) nil
@@ -773,56 +837,6 @@ yay
 
 (alias defn def)
 
-#|
-(prepif (no (set? 'a)) (let a 3)
-  (al a))
-->
-(if (no (set? 'a)) (let a 3 (al a))
-    (do (al a)))
-|#
-
-; prepend if
-(mac prepif (c p . bd)
-  `(if ,c ,(app p bd) (do ,@bd)))
-
-; if v is not set, set it to d before running bd
-(mac insure (v d . bd)
-  `(prepif (no (set? ',v)) (let ,v ,d)
-     ,@bd))
-
-(mac globinsure (v d . bd)
-  `(prepif (no (set? ',v)) (do (glob ,v ,d))
-     ,@bd))
-
-(mac dyn (a x . bd)
-  `(globinsure ,a nil
-     (let #ori ,a
-       (= ,a ,x)
-       (prot (do ,@bd)
-         (= ,a #ori)))))
-
-(mac dyn+= (a x . bd)
-  `(dyn ,a (+ ,a ,x) ,@bd))
-
-(mac dynzap (f a . bd)
-  `(dyn ,a (,f ,a) ,@bd))
-
-(mac sta (a x . bd)
-  `(do (push ,x ,a)
-       (prot (do ,@bd)
-         (pop ,a))))
-
-(mac dynwith (vs . bd)
-  (if (no vs) `(do ,@bd)
-      `(dyn ,(car vs) ,(cadr vs)
-         (dynwith ,(cddr vs) ,@bd))))
-
-(mac dynmlet ((nm . mbd) . bd)
-  `(dyn ,nm (nmc ,nm ,@mbd) ,@bd))
-
-(mac dynmwith (as . bd)
-  `(dynwith ,(mapapp (fn ((nm . bd)) `(,nm (nmc ,nm ,@bd))) as) ,@bd))
-
 (def nof (n a)
   (runon (casetyp a
            lis nil
@@ -833,23 +847,12 @@ yay
            (err nof "Can't make n = $1 of a = $2" n a))
     (rep n (app= _ a))))
 
-(def isn (a b)
-  (not (is a b)))
-
 (mac assert (a)
-  `(if (not ,a) (err nil "Assertion a = $1 failed" ',a)))
-
-
-(mac app= (a . rst)
-  `(= ,a (app ,a ,@rst)))
+  `(ifnot ,a (err assert "Assertion a = $1 failed" ',a)))
 
 (mac tostr a
   `(runoni #s ""
      (dyn *out* [app= #s _] ,@a)))
-
-(mac unless (ts . bd)
-  `(when (not ,ts)
-     ,@bd))
 
 (mac do1 a
   (if (no a) nil
@@ -912,7 +915,7 @@ yay
 (def flatall (a)
   (if (no a) nil
       (atm? (car a)) (cons (car a) (flatall (cdr a)))
-      (app (flatall (car a)) (rflatall (cdr a)))))
+      (app (flatall (car a)) (flatall (cdr a)))))
 
 ; applies f to dat property of a
 ; (calldat [+ _ 3] (mkdat 'test 3 {a 5})) -> <test {a 5 data 6}>
@@ -946,5 +949,3 @@ yay
 (mac import (nm . vs)
   `(do ,@(mapn `(var ,_ (,nm ',_)) vs)))
 
-(def lisfor (n m)
-  (forcoll i n m i))
