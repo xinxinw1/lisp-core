@@ -57,9 +57,9 @@
 (mac mapn (bd a)
   `(map (fn1 ,bd) ,a))
 
-; (mapf ((a b)) #[a b 30] '((1 2) (3 4))) -> (#[1 2 30] #[3 4 30])
+; (mapf (a b) #[a b 30] '((1 2) (3 4))) -> (#[1 2 30] #[3 4 30])
 (mac mapf (ag bd a)
-  `(map (fn ,ag ,bd) ,a))
+  `(map (fn (,ag) ,bd) ,a))
 
 (def mapapp (f a)
   (apl app (map f a)))
@@ -68,7 +68,7 @@
 (mac mapnapp (bd a)
   `(apl app (mapn ,bd ,a)))
 
-; (mapfapp ((a b)) `(,a ,b hey) '((1 2) (3 4))) -> (1 2 hey 3 4 hey)
+; (mapfapp (a b) `(,a ,b hey) '((1 2) (3 4))) -> (1 2 hey 3 4 hey)
 (mac mapfapp (ag bd a)
   `(apl app (mapf ,ag ,bd ,a)))
 
@@ -110,6 +110,11 @@ nil
 
 (alias defn def)
 
+;;; Object ;;;
+
+(def haskey (a x)
+  (ohas a x))
+
 ;;; let, with ;;;
 
 ; simple block
@@ -119,24 +124,28 @@ nil
 (mac let (a x . bd)
   `((fn (,a) ,@bd) ,x))
 
+; simple each
+(mac seach (x a . bd)
+  `(eachfn ,a (fn (,x) ,@bd)))
+
 ; (splevery 3 '(1 2 3 4 5 6 7 8)) -> #[(1 4 7) (2 5 8) (3 6)]
 ; like (buckets (let i 0 [do1 (% i n) (++ i)]) a)
-#|(def splevery (n a (o m 0))
+(def splevery (n a (o m 0))
   (let r #[]
-    (each x a
+    (seach x a
       ; (insure (r m) nil (push x (r m)))
-      (if (no (ohas r m)) (= (r m) nil))
+      (if (no (haskey r m)) (= (r m) nil))
       (push x (r m))
       (++ m)
       (if (is m n) (= m 0)))
     (map nrev r)))
 
 (def splevery2 (a)
-  (splevery 2 a))|#
-
+  (splevery 2 a))
+  
 #|(mac with (vs . bd)
-  (let g (grp vs 2)
-    `((fn ,(map car g) ,@bd) ,@(map cadr g))))|#
+  (let r (splevery2 vs)
+    `((fn ,(r 0) ,@bd) ,@(r 1))))|#
 
 (mac with (vs . bd)
   (let g (grp vs 2)
@@ -263,7 +272,7 @@ nil
   `(let ,nm (nmc ,nm ,@mbd) ,@bd))
 
 (mac mwith (as . bd)
-  `(with ,(mapfapp ((nm . bd)) `(,nm (nmc ,nm ,@bd)) as) ,@bd))
+  `(with ,(mapfapp (nm . bd) `(,nm (nmc ,nm ,@bd)) as) ,@bd))
 
 #|
 (smlet a '(lis 1 2 3)
@@ -273,10 +282,22 @@ nil
   `(let ,a (smc ,x) ,@bd))
 
 (mac smwith (vs . bd)
-  `(with ,(mapfapp ((fr to)) `(,fr (smc ,to)) (grp vs 2))
+  `(with ,(mapfapp (fr to) `(,fr (smc ,to)) (grp vs 2))
      ,@bd))
 
 ;;; defover ;;;
+
+#|
+(def test (a) (prn a))
+(defover test (a b)
+  (sup a)
+  (prn b))
+(test 3 4)
+->
+3
+4
+nil
+|#
 
 (mac defover (nm ag . bd)
   `(let sup ,nm
@@ -289,6 +310,17 @@ nil
 (mac fletover ((nm . mbd) . bd)
   `(let ,nm (let sup ,nm (nmc ,nm ,@mbd))
      ,@bd))
+
+#|
+(def test (a) (prn a))
+(defbef test (a b)
+  (prn b))
+(test 3 4)
+->
+4
+3
+nil
+|#
 
 (mac defbef (nm ag . bd)
   `(defover ,nm #a
@@ -458,7 +490,7 @@ nil
   `(dyn ,nm (nmc ,nm ,@mbd) ,@bd))
 
 (mac dynmwith (as . bd)
-  `(dynwith ,(mapfapp ((nm . bd)) `(,nm (nmc ,nm ,@bd)) as) ,@bd))
+  `(dynwith ,(mapfapp (nm . bd) `(,nm (nmc ,nm ,@bd)) as) ,@bd))
 
 (mac tostr bd
   `(runoni #s ""
@@ -718,47 +750,14 @@ nil
          ,(iflet r (has 'btw opt) `(ifnot ,fst ,(cadr r)))
          (,f ,g)))))
 
+(mac runn (bd a)
+  `(run (fn1 ,bd) ,a))
+
+(mac runf (ag bd a)
+  `(run (fn (,ag) ,bd) ,a))
+
 (mac runexist (f a . opt)
   `(run ,f ,a skip-nil ,@opt))
-
-;;; Default ;;;
-
-#|
-doesn't work:
-(macgs *defs*
-  (var *defs* {})
-  (def setdef (a x)
-    (= (*defs* a) x)))
-->
-(var gs1 {})
-(def setdef (a x)
-  (= (gs1 a) x))
-|#
-
-#|(mac macgs (v . bd)
-  `(smlet ,v #g ,@bd))
-
-(macgs *defs*
-  (var *defs* {})
-  (def setdef (a x)
-    (= (*defs* a) x)))
-
-(mac defvar1 (a x)
-  `(do (var ,a ,x)
-       (setdef ',a ,x)))
-
-(bytwo defvar defvar1)|#
-
-(var *defaults* {})
-(def setdef (a x)
-  (= (*defaults* a) x))
-
-(macby defvar (a x)
-  `(do (var ,a ,x)
-       (setdef ',a ,x)))
-
-(macby reset (a)
-  `(= ,a (*defaults* ',a)))
 
 ;;; and, or, in ;;;
 
@@ -927,6 +926,187 @@ yay
 
 (mac casetyp (x . a)
   `(casesym (typ ,x) ,@a))
+
+;;; Default ;;;
+
+#|
+doesn't work:
+(macgs *defs*
+  (var *defs* {})
+  (def setdef (a x)
+    (= (*defs* a) x)))
+->
+(var gs1 {})
+(def setdef (a x)
+  (= (gs1 a) x))
+|#
+
+#|(mac macgs (v . bd)
+  `(smlet ,v #g ,@bd))
+
+(macgs *defs*
+  (var *defs* {})
+  (def setdef (a x)
+    (= (*defs* a) x)))
+
+(mac defvar1 (a x)
+  `(do (var ,a ,x)
+       (setdef ',a ,x)))
+
+(bytwo defvar defvar1)|#
+
+(var *defaults* {})
+(var *defaultsf* {})
+
+(def setdef (a x)
+  (= (*defaults* a) x))
+
+(def setdeff (a x)
+  (= (*defaultsf* a) x))
+
+(macby defvar (a x)
+  `(do (var ,a ,x)
+       (setdef ',a ,x)))
+
+(def dcopy (a)
+  (casetyp a
+    (lis obj arr) (map dcopy a)
+    (copy a)))
+
+; defvar form
+(macby defvarf (a x)
+  (setdeff a (dcopy x))
+  `(var ,a ,x))
+
+(macby reset (a)
+  (if (haskey *defaults* a) `(= ,a (*defaults* ',a))
+      (haskey *defaultsf* a)  `(= ,a ,(*defaultsf* a))
+      (err reset "a = $1 not in defaults list" a)))
+
+;;; defargs ;;;
+
+#|
+(defargs test (a) (prn a) (prn args))
+(test 1 2 3)
+->
+1
+(1 2 3)
+nil
+|#
+
+(mac defargsi (i nm ag . bd)
+  `(def ,nm ,i
+     ((fn ,ag ,@bd) @,i)))
+
+(mac defargs (nm ag . bd)
+  `(defargsi args ,nm ,ag ,@bd))
+
+;;; tim ;;;
+
+; (tim (rep 5 (prn 3))) -> 256
+(mac tim bd
+  `(let #t1 (currtim)
+     ,@bd
+     (- (currtim) #t1)))
+
+; (timval (map [+ _ 3] '(1 2 3 4 5))) -> (0 (4 5 6 7 8))
+(mac timval bd
+  `(with (#t1 (currtim) #val (do ,@bd))
+     (lis (- (currtim) #t1) #val)))
+
+#|
+(w/tim 'hey (+ 2 3))
+->
+Time hey: 1 ms
+5
+|#
+
+(defvarf *times* nil)
+
+(def prntra ()
+  (runf (note tim) (prn "Time $1: $2 ms" note tim) *times*))
+
+(def cleartra ()
+  (reset *times*))
+
+(mac w/tim (note . bd)
+  `(let (#tim #val) (timval ,@bd)
+     (prn "Time $1: $2 ms" ,note #tim)
+     #val))
+
+(mac w/tra (note . bd)
+  `(let (#tim #val) (timval ,@bd)
+     (push (lis ,note #tim) *times*)
+     #val))
+
+#|
+(w/timfn test '(1 2 3 4 5) (+ 2 3))
+->
+Time (test 1 2 3 4 5): 0 ms
+5
+|#
+
+(mac w/timfn (nm args . bd)
+  `(w/tim `(,,nm ,@,args)
+     ,@bd))
+
+(mac w/trafn (nm args . bd)
+  `(w/tra `(,,nm ,@,args)
+     ,@bd))
+
+#|
+(def fact (n)
+  (if (is n 0) 1
+      (* n (fact (- n 1)))))
+(timover fact)
+(fact 5)
+->
+Time (fact 0): 0 ms
+Time (fact 1): 5 ms
+Time (fact 2): 9 ms
+Time (fact 3): 65 ms
+Time (fact 4): 68 ms
+Time (fact 5): 73 ms
+120
+|#
+
+(macby timover (nm)
+  `(defover ,nm #args
+     (w/timfn ,nm #args
+       (sup @#args))))
+
+(macby traover (nm)
+  `(defover ,nm #args
+     (w/trafn ,nm #args
+       (sup @#args))))
+
+#|
+(deftim fact (n)
+  (if (is n 0) 1
+      (* n (fact (- n 1)))))
+(fact 5)
+->
+Time (fact 0): 0 ms
+Time (fact 1): 5 ms
+Time (fact 2): 9 ms
+Time (fact 3): 65 ms
+Time (fact 4): 68 ms
+Time (fact 5): 73 ms
+120
+|#
+
+#|(mac deftim (nm ag . bd)
+  `(defargsi #args ,nm ,ag
+     (w/timfn ,nm #args
+       ,@bd)))|#
+       
+(mac deftim (nm ag . bd)
+  `(do (def ,nm ,ag ,@bd)
+       (timover ,nm)))
+
+(mac deftra (nm ag . bd)
+  `(do (def ,nm ,ag ,@bd)
+       (traover ,nm)))
 
 ;;; tagbody ;;;
 

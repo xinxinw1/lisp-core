@@ -268,6 +268,8 @@
     owith: function lowith(a, x, y){
              return L.ob(L.owith(L.dat(a), x, y));
            },
+           
+    currtim: L.currtim,
     
     err: function lerr(f, a){
            $.err2(f, L.dsj(f), L.dat($.apl(L.stf, $.sli(arguments, 1))));
