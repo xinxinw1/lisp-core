@@ -190,6 +190,7 @@
     join: L.joi,
     flat: L.fla,
     app: L.app,
+    afta: L.afta,
     
     //evry: L.evry,
     
@@ -285,8 +286,9 @@
     prs: function lprs(a){
            return L.prs(L.jstr(a));
          },
-    "=nm": L.setnm,
-    "*out*": function (a){return L.nil();}
+    name: L.name,
+    "*out*": function (a){return L.nil();},
+    allglobs: L.allglbs
   });
   
   ofn(function (a){

@@ -2,14 +2,26 @@
 
 ;;; mac, def, syntax ;;;
 
-(var mac (mc (nm ag . bd)
-           `(do (var ,nm (mc ,ag ,@bd))
-                (=nm ,nm ',nm))))
-(=nm mac 'mac)
+(var mac (name (mc (nm ag . bd)
+                 `(var ,nm (name (mc ,ag ,@bd) ',nm)))
+               'mac))
 
+(mac varnm (nm x)
+  `(var ,nm (name ,x ',nm)))
+
+#|(mac def (nm ag . bd)
+  `(varnm ,nm (fn ,ag ,@bd)))|#
+
+; not using varnm increases speed 2x
 (mac def (nm ag . bd)
-  `(do (var ,nm (fn ,ag ,@bd))
-       (=nm ,nm ',nm)))
+  `(var ,nm (name (fn ,ag ,@bd) ',nm)))
+
+(mac smac (nm . bd)
+  `(varnm ,nm (smc ,@bd)))
+
+#|
+(smac test '(+ 2 3))
+|#
 
 (mac fn1 (a) `(fn (_) ,a))
 
@@ -20,7 +32,8 @@
 
 ;;; Basic Conditional ;;;
 
-(mac no (a) `(nil? ,a))
+(var no nil?)
+;(mac no (a) `(nil? ,a))
 (mac not (a) `(no ,a))
 
 (def isn (a b)
@@ -101,12 +114,16 @@ nil
 
 (mac macby (nm ag . bd)
   `(do (mac #g ,ag ,@bd)
+       (name #g (app ',nm '-by))
        (by ,(len ag) ,nm #g)))
 
 ;;; alias ;;;
 
+#|(macby alias (new old)
+  `(mac ,new #args `(,,old ,@#args)))|#
+
 (macby alias (new old)
-  `(mac ,new #args `(,,old ,@#args)))
+  `(smac ,new ',old))
 
 (alias defn def)
 
@@ -201,18 +218,34 @@ nil
 ; named function
 ; (nfn hey (a) (prn a)) -> <fn hey (a)>
 (mac nfn (nm ag . bd)
+  `(let ,nm (fn ,ag ,@bd)
+     (name ,nm ',nm)
+     ,nm))
+
+(mac nmc (nm ag . bd)
+  `(let ,nm (mc ,ag ,@bd)
+     (name ,nm ',nm)
+     ,nm))
+
+(mac nsmc (nm ag . bd)
+  `(let ,nm (smc ,ag ,@bd)
+     (name ,nm ',nm)
+     ,nm))
+
+#|(mac nfn (nm ag . bd)
   `(runoni #_ (fn ,ag ,@bd)
-     (=nm #_ ',nm)))
+     (name #_ ',nm)))
 
 (mac nmc (nm ag . bd)
   `(runoni #_ (mc ,ag ,@bd)
-     (=nm #_ ',nm)))
+     (name #_ ',nm)))|#
 
 ;;; Macro Writing Helpers ;;;
 
-(def afta (a x)
+; moved to lisp-tools
+#|(def afta (a x)
   (if (no a) nil
-      (lisd (car a) x (afta (cdr a) x))))
+      (lisd (car a) x (afta (cdr a) x))))|#
 
 (def befa (a x)
   (if (no a) nil
@@ -279,58 +312,31 @@ nil
   a)
 |#
 (mac smlet (a x . bd)
-  `(let ,a (smc ,x) ,@bd))
+  `(let ,a (nsmc ,x) ,@bd))
 
 (mac smwith (vs . bd)
-  `(with ,(mapfapp (fr to) `(,fr (smc ,to)) (grp vs 2))
+  `(with ,(mapfapp (fr to) `(,fr (nsmc ,to)) (grp vs 2))
      ,@bd))
 
-;;; defover ;;;
+;;; and, or, in ;;;
+
+(mac and a
+  (if (no a) t
+      (no (cdr a)) (car a)
+      `(if ,(car a) (and ,@(cdr a)))))
 
 #|
-(def test (a) (prn a))
-(defover test (a b)
-  (sup a)
-  (prn b))
-(test 3 4)
-->
-3
-4
-nil
+(or a b c)
+-> (let gs nil
+     (if (= gs a) gs
+         (= gs b) gs
+         (= gs c) gs))
 |#
 
-(mac defover (nm ag . bd)
-  `(let sup ,nm
-     (= ,nm (nfn ,nm ,ag ,@bd))))
-
-(mac macover (nm ag . bd)
-  `(let sup ,nm
-     (= ,nm (nmc ,nm ,ag ,@bd))))
-
-(mac fletover ((nm . mbd) . bd)
-  `(let ,nm (let sup ,nm (nmc ,nm ,@mbd))
-     ,@bd))
-
-#|
-(def test (a) (prn a))
-(defbef test (a b)
-  (prn b))
-(test 3 4)
-->
-4
-3
-nil
-|#
-
-(mac defbef (nm ag . bd)
-  `(defover ,nm #a
-     (apl (fn ,ag ,@bd) #a)
-     (apl sup #a)))
-
-(mac defaft (nm ag . bd)
-  `(defover ,nm #a
-     (apl sup #a)
-     (apl (fn ,ag ,@bd) #a)))
+(mac or a
+  (w/gs g
+    `(let ,g nil
+        (if ,@(afta (mapn `(= ,g ,_) a) g)))))
 
 ;;; once ;;;
 
@@ -438,6 +444,12 @@ nil
          (gswith (lis ,@gens) (lis ,@vs)
            (with ,(flat (pair vs gens)) ,@bd))))))
 
+;;; in ;;;
+
+(mac in (x . a)
+  (once x
+    `(or ,@(mapn `(is ,x ,_) a))))
+
 ;;; prepif ;;;
 
 #|
@@ -495,6 +507,85 @@ nil
 (mac tostr bd
   `(runoni #s ""
      (dyn *out* [app= #s _] ,@bd)))
+
+;;; defover ;;;
+
+#|
+(def test (a) (prn a))
+(defover test (a b)
+  (sup a)
+  (prn b))
+(test 3 4)
+->
+3
+4
+nil
+|#
+
+(mac defover (nm ag . bd)
+  `(= ,nm (let sup ,nm (nfn ,nm ,ag ,@bd))))
+
+#|
+(mac test (a) `(prn ,a))
+(macover test (a b)
+  (prn b)
+  (sup a))
+(mcx1 '(test 3 4))
+->
+4
+(prn 3)
+|#
+
+; sup calls the macro function of the supermacro
+(mac macover (nm ag . bd)
+  `(= ,nm (let sup (dat ,nm) (nmc ,nm ,ag ,@bd))))
+
+(mac over (nm ag . bd)
+  `(if (fn? ,nm) (defover ,nm ,ag ,@bd)
+       (mac? ,nm) (macover ,nm ,ag ,@bd)))
+
+(mac fletover ((nm ag . fbd) . bd)
+  `(let ,nm (let sup ,nm (nfn ,nm ,ag ,@fbd)) ,@bd))
+
+(mac mletover ((nm ag . fbd) . bd)
+  `(let ,nm (let sup (dat ,nm) (nmc ,nm ,ag ,@fbd)) ,@bd))
+
+(mac letover ((nm ag . fbd) . bd)
+  `(if (fn? ,nm) (fletover (,nm ,ag ,@fbd) ,@bd)
+       (mac? ,nm) (mletover (,nm ,ag ,@fbd) ,@bd)
+       (do ,@bd)))
+
+(mac fdynover ((nm ag . fbd) . bd)
+  `(dyn ,nm (let sup ,nm (nfn ,nm ,ag ,@fbd)) ,@bd))
+
+(mac mdynover ((nm ag . fbd) . bd)
+  `(dyn ,nm (let sup (dat ,nm) (nmc ,nm ,ag ,@fbd)) ,@bd))
+
+(mac dynover ((nm ag . fbd) . bd)
+  `(if (fn? ,nm) (fdynover (,nm ,ag ,@fbd) ,@bd)
+       (mac? ,nm) (mdynover (,nm ,ag ,@fbd) ,@bd)
+       (do ,@bd)))
+
+#|
+(def test (a) (prn a))
+(defbef test (a b)
+  (prn b))
+(test 3 4)
+->
+4
+3
+nil
+|#
+
+(mac defbef (nm ag . bd)
+  `(defover ,nm #a
+     (apl (fn ,ag ,@bd) #a)
+     (apl sup #a)))
+
+(mac defaft (nm ag . bd)
+  `(defover ,nm #a
+     (apl sup #a)
+     (apl (fn ,ag ,@bd) #a)))
 
 ;;; deferr ;;;
 
@@ -759,30 +850,6 @@ nil
 (mac runexist (f a . opt)
   `(run ,f ,a skip-nil ,@opt))
 
-;;; and, or, in ;;;
-
-(mac and a
-  (if (no a) t
-      (no (cdr a)) (car a)
-      `(if ,(car a) (and ,@(cdr a)))))
-
-(mac or a
-  (w/gs g
-    `(let ,g nil
-        (if ,@(afta (mapn `(= ,g ,_) a) g)))))
-
-#|
-(or a b c)
--> (let gs nil
-     (if (= gs a) gs
-         (= gs b) gs
-         (= gs c) gs))
-|#
-
-(mac in (x . a)
-  (once x
-    `(or ,@(mapn `(is ,x ,_) a))))
-
 ;;; (dot) ;;;
 
 (mac . (x . a)
@@ -813,6 +880,9 @@ nil
                            (apl (dat m) (cdr a)))
               (mcx1l a)))
       (mcx1l a)))
+
+(def mcx2 (a)
+  (mcx1 (mcx1 a)))
 
 (def mcx1l (a)
   (if (no a) nil
@@ -879,15 +949,26 @@ yay
      ,@a))
 |#
 
-(mac case (x . a)
-  (once x
-    `(if ,@(mkcase x a))))
+#|
+(mcx1 '(case x 1 hey 2 what 3 no 4 yes whoa))
+->
+(withi nil
+  (if ((tfn 1) x) hey
+      ((tfn 2) x) what
+      ((tfn 3) x) no
+      ((tfn 4) x) yes
+      whoa))
+|#
 
 (def mkcase (x a)
   (if (no a) nil
       (no (cdr a)) (lis (car a))
       (lisd `((tfn ,(car a)) ,x) (cadr a)
              (mkcase x (cddr a)))))
+
+(mac case (x . a)
+  (once x
+    `(if ,@(mkcase x a))))
 
 ; same as case but using is for comparison instead of tfn
 #|(mac caseis (x . a)
@@ -912,7 +993,7 @@ yay
 
 (def infn a [has _ a])
 
-(def mkcasesym (a)
+#|(def mkcasesym (a)
   (if (no a) nil
       (no (cdr a)) (lis (car a))
       (lisd (if (atm? (car a))
@@ -922,7 +1003,30 @@ yay
             (mkcasesym (cddr a)))))
 
 (mac casesym (x . a)
-  `(case ,x ,@(mkcasesym a)))
+  `(case ,x ,@(mkcasesym a)))|#
+  
+#|
+(mcx1 '(casesym a hey 1 what 2 (no yes hey) 3 what 4 5))
+(withi nil
+  (if (is a 'hey) 1
+      (is a 'what) 2
+      (in a 'no 'yes 'hey) 3
+      (is a 'what) 4
+      5))
+|#
+
+(mac casesym (x . a)
+  (once x
+    `(if ,@(mkcasesym x a))))
+
+(def mkcasesym (x a)
+  (if (no a) nil
+      (no (cdr a)) (lis (car a))
+      (lisd (if (atm? (car a))
+                `(is ,x ',(car a))
+                `(in ,x ,@(mapn `',_ (car a))))
+            (cadr a)
+            (mkcasesym x (cddr a)))))
 
 (mac casetyp (x . a)
   `(casesym (typ ,x) ,@a))
@@ -1001,18 +1105,87 @@ nil
 (mac defargs (nm ag . bd)
   `(defargsi args ,nm ,ag ,@bd))
 
-;;; tim ;;;
+;;; calls ;;;
 
-; (tim (rep 5 (prn 3))) -> 256
-(mac tim bd
-  `(let #t1 (currtim)
-     ,@bd
-     (- (currtim) #t1)))
+(defvarf *calls* nil)
+  
+(def counts (a)
+  (let r {}
+    (seach x a
+      (if (haskey r x) (++ (r x))
+          (= (r x) 1)))
+    r))
+
+(def prncalls ()
+  (counts *calls*))
+
+(def addcall (nm)
+  (push nm *calls*))
+
+#|(defvarf *calls* {})
+
+(def prncalls ()
+  *calls*)
+
+(def addcall (nm)
+  (if (haskey *calls* nm) (++ (*calls* nm))
+      (= (*calls* nm) 1)))|#
+
+#|
+(ifbuild
+  (a b
+   c d
+   e)
+  (_ test hey a b))
+
+(mac ifbuild (q yes elif yes . rst)|#
+
+(macby callsover (nm)
+  `(over ,nm #args
+     (addcall ',nm)
+     (sup @#args)))
+
+#|(mac callsoverall ()
+  `(callsover ,@(allglobs)))|#
+
+(var *callsskip* '(counts seach eachfn fn ++ + += zap haskey ohas prncalls
+                   runoni callsover if fn? mac? defover or is has name map 
+                   fn1 dat macover push callsall let grp rem in do mapn allglobs addcall = nfn nmc))
+#|(mac callsall ()
+  (let r (grp (rem [or (is (name (eval _)) 'callsover-by)
+                       (has _ *callsskip*)]
+                   (allglobs))
+              10)
+    `(do ,@(mapn `(callsover ,@_) r))))|#
+    
+(mac callsall ()
+  `(callsover ,@(rem [or (is (name (eval _)) 'callsover-by)
+                         (has _ *callsskip*)]
+                     (allglobs))))
+
+;;; tim ;;;
 
 ; (timval (map [+ _ 3] '(1 2 3 4 5))) -> (0 (4 5 6 7 8))
 (mac timval bd
   `(with (#t1 (currtim) #val (do ,@bd))
      (lis (- (currtim) #t1) #val)))
+
+#|
+(tim (rep 5 (prn 3)))
+->
+3
+3
+3
+3
+3
+Time: 110 ms
+nil
+|#
+
+(mac tim bd
+  `(let (#tim #val) (timval ,@bd)
+     (prn "Time: $1 ms" #tim)
+     #val))
 
 #|
 (w/tim 'hey (+ 2 3))
@@ -1029,14 +1202,22 @@ Time hey: 1 ms
 (def cleartra ()
   (reset *times*))
 
-(mac w/tim (note . bd)
+(mac timnote (note . bd)
   `(let (#tim #val) (timval ,@bd)
      (prn "Time $1: $2 ms" ,note #tim)
      #val))
 
-(mac w/tra (note . bd)
+(mac tranote (note . bd)
   `(let (#tim #val) (timval ,@bd)
      (push (lis ,note #tim) *times*)
+     #val))
+
+(def prnlogtime () *logtime*)
+
+(mac addtim (v . bd)
+  `(let (#tim #val) (timval ,@bd)
+     (prn "Time $1: $2 ms" 'hey #tim)
+     (+= ,v #tim)
      #val))
 
 #|
@@ -1046,12 +1227,12 @@ Time (test 1 2 3 4 5): 0 ms
 5
 |#
 
-(mac w/timfn (nm args . bd)
-  `(w/tim `(,,nm ,@,args)
+(mac timfn (nm args . bd)
+  `(timnote `(,,nm ,@,args)
      ,@bd))
 
-(mac w/trafn (nm args . bd)
-  `(w/tra `(,,nm ,@,args)
+(mac trafn (nm args . bd)
+  `(tranote `(,,nm ,@,args)
      ,@bd))
 
 #|
@@ -1071,13 +1252,13 @@ Time (fact 5): 73 ms
 |#
 
 (macby timover (nm)
-  `(defover ,nm #args
-     (w/timfn ,nm #args
+  `(over ,nm #args
+     (timfn ,nm #args
        (sup @#args))))
 
 (macby traover (nm)
-  `(defover ,nm #args
-     (w/trafn ,nm #args
+  `(over ,nm #args
+     (wtrafn ,nm #args
        (sup @#args))))
 
 #|
@@ -1107,6 +1288,19 @@ Time (fact 5): 73 ms
 (mac deftra (nm ag . bd)
   `(do (def ,nm ,ag ,@bd)
        (traover ,nm)))
+
+#|
+(timproc for (lisfor 1 10))
+->
+Time for: 7 ms
+(1 2 3 4 5 6 7 8 9 10)
+|#
+
+(mac timproc (nm . bd)
+  `(let #sum 0
+     (do1 (dynover (,nm #args (addtim #sum (sup @#args)))
+            ,@bd)
+          (prn "Time $1: $2 ms" ',nm #sum))))
 
 ;;; tagbody ;;;
 
