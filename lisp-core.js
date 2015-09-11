@@ -1,10 +1,11 @@
-/***** Lisp Core Devel *****/
+/***** Lisp Core 0.1 *****/
 
-/* require tools >= 3.1 */
-/* require ajax >= 4.1 */
-/* require lisp-tools */
-/* require lisp-parse */
-/* require lisp-exec */
+/* require tools 4.6.1 */
+/* require ajax 4.5.1 */
+/* require prec-math 4.3.2 */
+/* require lisp-tools 0.1 */
+/* require lisp-parse 0.1 */
+/* require lisp-exec 0.1.1 */
 
 (function (win, udf){
   ////// Import //////
