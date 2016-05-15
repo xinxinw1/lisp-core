@@ -322,11 +322,11 @@
   
   ////// Object exposure //////
   
-  $.att({
+  $.att(L, {
     prsf: prsf,
     evls: evls,
     evlf: evlf
-  }, L);
+  });
   
   ////// Testing //////
   
