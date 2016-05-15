@@ -224,8 +224,8 @@
     upp: L.upp,
     stf: L.stf,
     
-    odd: chrb(L.oddp),
-    evn: chrb(L.evnp),
+    odd: chrb(L.odd),
+    evn: chrb(L.evn),
     
     "+": L.add,
     "-": L.sub,
