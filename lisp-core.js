@@ -273,8 +273,10 @@
            
     currtim: L.currtim,
     
+    self: $.self,
+    
     err: function lerr(f, a){
-           $.err2(f, L.dsj(f), L.dat($.apl(L.stf, $.sli(arguments, 1))));
+           throw new $.Err(lerr, L.dsj(f), L.dat($.apl(L.stf, $.sli(arguments, 1))));
          },
     
     do: L.dol,

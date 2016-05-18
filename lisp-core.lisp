@@ -1356,7 +1356,7 @@ Time for: 7 ms
   `(= ,a (,a 0)))
 
 ; make object accessors
-(mac mkoacc (nm pre)
+(mac with-object-accessors (nm pre)
   (let g (app '* nm '*)
     `(do (var ,g {})
          (def ,(app pre 'ref) (a) (oref ,g a))
