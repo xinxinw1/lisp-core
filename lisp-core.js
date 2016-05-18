@@ -136,6 +136,10 @@
     pr: L.pr,
     prn: L.prn,
     al: L.al,
+    log: function llog(a){
+      console.log(a);
+      return L.nil();
+    },
     
     sym: L.sym,
     str: L.str,
