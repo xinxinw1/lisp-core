@@ -1356,7 +1356,7 @@ Time for: 7 ms
   `(= ,a (,a 0)))
 
 ; make object accessors
-(mac with-object-accessors (nm pre)
+(mac with-object-accessors1 (nm pre)
   (let g (app '* nm '*)
     `(do (var ,g {})
          (def ,(app pre 'ref) (a) (oref ,g a))
@@ -1367,6 +1367,8 @@ Time for: 7 ms
          (def ,(app pre 'ren) (a b) (oren ,g a b))
          (def ,(app pre 'lay) () (olay ,g))
          (def ,(app pre 'ulay) () (oulay ,g)))))
+
+(by 2 with-object-accessors with-object-accessors1)
 
 ;;; bug ;;;
 
@@ -1381,7 +1383,7 @@ Time for: 7 ms
 
 (mac bug a
   `(let #g (lis ,@a)
-     (al ,(join (mapi (str _ " = $" i) a 1) " | ") @#g)
+     (log ,(join (mapi (str _ " = $" i) a 1) " | ") @#g)
      (las #g)))
 
 (mac bugs a
@@ -1389,7 +1391,7 @@ Time for: 7 ms
 
 (mac bugnm (nm . a)
   `(let #g (lis ,@a)
-     (al (str ,nm " | "
+     (log (str ,nm " | "
               ,(join (mapi (str _ " = $" i) a 1) " | "))
          @#g)
      (las #g)))
