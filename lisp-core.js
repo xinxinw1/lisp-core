@@ -293,7 +293,8 @@
          },
     name: L.name,
     "*out*": function (a){return L.nil();},
-    allglobs: L.allglbs
+    allglobs: L.allglbs,
+    "get-apply-stack": L.getApplyStack
   });
   
   ofn(function (a){

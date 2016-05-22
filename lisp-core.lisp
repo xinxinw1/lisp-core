@@ -117,6 +117,11 @@ nil
        (name #g (app ',nm '-by))
        (by ,(len ag) ,nm #g)))
 
+(mac defby (nm ag . bd)
+  `(do (def #g ,ag ,@bd)
+       (name #g (app ',nm '-by))
+       (by ,(len ag) ,nm #g)))
+
 ;;; alias ;;;
 
 #|(macby alias (new old)
@@ -300,6 +305,12 @@ nil
 ; function let
 (mac flet ((nm . fbd) . bd)
   `(let ,nm (nfn ,nm ,@fbd) ,@bd))
+
+(mac fwith (as . bd)
+  `(with ,(mapfapp (nm . bd) `(,nm (nfn ,nm ,@bd)) as) ,@bd))
+
+(mac fwiths (as . bd)
+  `(withs ,(mapfapp (nm . bd) `(,nm (nfn ,nm ,@bd)) as) ,@bd))
 
 (mac mlet ((nm . mbd) . bd)
   `(let ,nm (nmc ,nm ,@mbd) ,@bd))
@@ -1383,7 +1394,7 @@ Time for: 7 ms
 
 (mac bug a
   `(let #g (lis ,@a)
-     (log ,(join (mapi (str _ " = $" i) a 1) " | ") @#g)
+     (log ,(join (mapi (str (dsp _) " = $" i) a 1) " | ") @#g)
      (las #g)))
 
 (mac bugs a
@@ -1392,7 +1403,7 @@ Time for: 7 ms
 (mac bugnm (nm . a)
   `(let #g (lis ,@a)
      (log (str ,nm " | "
-              ,(join (mapi (str _ " = $" i) a 1) " | "))
+              ,(join (mapi (str (dsp _) " = $" i) a 1) " | "))
          @#g)
      (las #g)))
 
